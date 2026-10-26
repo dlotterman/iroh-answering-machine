@@ -1,0 +1,5 @@
+/target
+/dist
+/keys
+*.key
+am.env

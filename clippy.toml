@@ -1,0 +1,2 @@
+# Tests may unwrap: a failed unwrap points at the exact line, which is what a test failure should do.
+allow-unwrap-in-tests = true

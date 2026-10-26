@@ -1,0 +1,73 @@
+# The answering machine on Datum Compute: one Network, one Secret, one Workload. Nothing is exposed: no NetworkService,
+# HTTPProxy or load balancer. Agents reach it only by dialing its Iroh endpoint id through Datum's relays.
+#
+# Replace before applying (GUIDE.md does this with sed):
+#   __NAME__                  a name nothing in the project uses yet; resources become __NAME__ and __NAME__-am
+#   __SERVER_SECRET_KEY_HEX__ 64 hex characters; fixes the endpoint id, so invites survive restarts
+#   __OWNER_IDS__             comma-separated owner endpoint ids (`am owner init` prints one; `add-owner` adds more)
+#   __REVOKED_INVITES__       comma-separated invite ids refused before they expire (`am owner revoke`)
+#   __IMAGE__                 ghcr.io/dlotterman/iroh-answering-machine@sha256:...
+# `am owner manifest` fills all of these from the owner's state volume, so re-applying never loses a revocation or an
+# owner. Instances don't notice Secret changes: after re-applying, `datumctl compute restart` the workload.
+# Messages live in SQLite on the instance's disk and are lost when the instance is replaced.
+apiVersion: networking.datumapis.com/v1alpha
+kind: Network
+metadata:
+  name: __NAME__
+spec:
+  ipFamilies:
+    - IPv6
+  ipam:
+    mode: Auto
+  mtu: 1440
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: __NAME__-am
+type: Opaque
+stringData:
+  SERVER_SECRET_KEY_HEX: "__SERVER_SECRET_KEY_HEX__"
+  OWNER_IDS: "__OWNER_IDS__"
+  REVOKED_INVITES: "__REVOKED_INVITES__"
+---
+apiVersion: compute.datumapis.com/v1alpha
+kind: Workload
+metadata:
+  name: __NAME__-am
+spec:
+  template:
+    spec:
+      runtime:
+        class: general-purpose
+        resources:
+          instanceType: datumcloud/d1-standard-2
+        sandbox:
+          containers:
+            - name: answering-machine
+              image: __IMAGE__
+              env:
+                - name: SERVER_SECRET_KEY_HEX
+                  valueFrom:
+                    secretKeyRef:
+                      name: __NAME__-am
+                      key: SERVER_SECRET_KEY_HEX
+                - name: OWNER_IDS
+                  valueFrom:
+                    secretKeyRef:
+                      name: __NAME__-am
+                      key: OWNER_IDS
+                - name: REVOKED_INVITES
+                  valueFrom:
+                    secretKeyRef:
+                      name: __NAME__-am
+                      key: REVOKED_INVITES
+      networkInterfaces:
+        - network:
+            name: __NAME__
+  placements:
+    - name: us-west
+      locations:
+        - name: us-west-1
+      scaleSettings:
+        minReplicas: 1
