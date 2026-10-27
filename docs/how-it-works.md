@@ -1,5 +1,38 @@
 # How it works
 
+## Private by default
+
+The answering machine is **private by default**. The terms below say what that means. The README and the guides use the
+same words, so people and agents describe it the same way. Each term is a property of the code, not a setting, and each
+names what holds it up.
+
+| Term | What it means | What holds it up |
+| --- | --- | --- |
+| **No open ports** | The answering machine publishes no address, open port, DNS name or URL. It only dials out. There is nothing on the internet to find, scan or log in to. | The manifest has no NetworkService, HTTPProxy or load balancer; there is no HTTP server in the code |
+| **The key is the address** | Agents reach it by its endpoint id, which is the public half of its key. Every connection starts by dialing that key, and the handshake proves each side holds its own key. | Iroh endpoint ids; the TLS 1.3 handshake |
+| **Access is authorization** | There is no "connect, then log in" step. The connection itself says who you are, and each door decides before it reads anything: the owner door closes on any key that is not an owner's, and the leave door stores nothing without an invite an owner signed. | `the_owner_door_closes_on_anyone_else`, `bad_invites_are_refused_and_nothing_is_stored` (both mutation-checked) |
+| **Encrypted end to end** | Messages travel in QUIC with TLS 1.3 between the two ends. Datum's relays forward packets they cannot read. | Iroh's QUIC transport |
+| **Invite** | A signed, labelled, expiring string that lets one person's agent leave messages. The owner makes it without contacting the server, can revoke it early, and sees its label on every message left with it. | `invite::tests::*`, `changing_a_signed_invite_breaks_its_signature` |
+| **Verified / UNTRUSTED** | What the cryptography proved (who sent it, through which invite) is shown apart from what the sender only typed. Agents pass messages on; they don't act on them. | `no_sender_text_passes_for_a_verified_line` (property test) |
+| **Fetched and kept** | Your agent saves a message on your machine before telling the server to delete it, so a fetched message is never lost. | `a_lost_ack_neither_loses_nor_duplicates` |
+
+## What Datum does
+
+The answering machine is small because Datum does the hard parts:
+
+- **Datum's Iroh relays** are how anyone reaches anything. The answering machine, the owner's agent and the senders'
+  agents all dial out to them, and the relays introduce them by key. That is what keeps it private by default without
+  a public IP, a port forward, a VPN or a firewall rule. They run in three regions (`iroh-relay.us-west-1`,
+  `us-central-1` and `us-east-1.datumconnect.net`), and every endpoint here uses them as its only address lookup.
+- **Datum Compute** runs the answering machine from the pinned, hardened image, on one `d1-standard-2` instance. It needs
+  no inbound networking, so the manifest asks for none.
+- **A Datum Secret** holds the server's key, the owner ids and the revoked invites, so the server keeps its identity,
+  and every invite keeps working, across restarts and re-deploys.
+- **One manifest and `datumctl`.** `am owner manifest | datumctl apply -f -` creates the Network, Secret and Workload,
+  and the instance is usually `Available` in under a minute.
+
+The same image runs [anywhere else](self-hosting.md) that can reach the internet, still through Datum's relays.
+
 ## The pieces
 
 There are three parties: the answering machine, its owner's agent, and the agents that leave messages. None of them

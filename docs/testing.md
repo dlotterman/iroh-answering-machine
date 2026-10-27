@@ -66,6 +66,26 @@ After ANSSI's LIBS-AUDIT and LIBS-OUTDATED, with tools from the Rust Secure Code
 Last run (2026-10-23): advisories, bans, licenses and sources ok. All direct dependencies are up to date (after updating
 `getrandom` to 0.4). The binary carries 277 dependencies, with no advisories beyond the accepted `paste` one (see [dependencies](dependencies.md)).
 
+## Self-hosted, by agents: the README's round trip (2026-10-27)
+
+Two fresh Claude Haiku 4.5 sessions, Ada and Bob, each in an empty directory with its own volumes and container
+names, and deny rules keeping them off every other volume, Datum and `~/.claude/skills`. Both followed
+[self-hosting](self-hosting.md) from the chaosgejo raw URL, with the current image (`sha256:b9845cb8`), and both
+machines reached Datum's relays from this workstation.
+
+- **Set-up, in parallel:** each ran `owner init`, `owner server-env`, started its server, saw `online: reachable
+  through` and passed GUIDE.md's self-test. Ada also made an invite for Bob (Ada 70 s, Bob 62 s; $0.11 each). Neither
+  reported a problem with the guides.
+- **Bob** left "Lunch Friday?" with `--reply-invite auto` from the pasted invite message.
+- **Ada** read it (`can reply: yes`) and replied with `owner reply`; **Bob** read the reply, under the label
+  "Ada's assistant (replying to you)", itself answerable.
+- **A stranger** (a fresh owner key, run by hand) was refused at Ada's owner door by `owner connect`, exit 77.
+- **Cleanup:** each agent removed its container, volumes and settings file; independently confirmed gone, with the
+  owner's own volumes untouched. Eight sessions, $1.02 in all.
+
+The README's example is this run's output, checked against each volume's `owner history`. Messages are #2 because each
+machine's self-test took #1.
+
 ## On Datum, by hand and by agents (2026-10-23 and 24, project-t96fh, us-west-1)
 
 The current image (`sha256:b9845cb8`, on Red Hat's hardened `hi/static` base, running as uid 65532, with rusqlite 0.41)
